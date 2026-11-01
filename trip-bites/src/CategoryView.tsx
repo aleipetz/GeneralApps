@@ -92,7 +92,11 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
         <input
           ref={fileInput}
           type="file"
-          accept="image/*,.heic,.heif"
+          // Plain "image/*" on purpose: listing HEIC types explicitly makes
+          // iOS convert every selected photo before returning them, which
+          // can stall the picker for minutes on large selections. We decode
+          // HEIC ourselves (see images.ts).
+          accept="image/*"
           multiple
           hidden
           onChange={(e) => {
@@ -106,6 +110,7 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
               Processing photos… {upload.done}/{upload.total}
             </span>
             <progress value={upload.done} max={upload.total} />
+            <span className="muted small">Keep this screen open until it finishes.</span>
           </div>
         ) : (
           <div className="row wrap">
@@ -116,6 +121,9 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
               + Add without photo
             </button>
             <span className="muted small desktop-only">or drop photos anywhere on this page</span>
+            <span className="muted small touch-only">
+              Tip: if the photo picker is slow to close after choosing lots of photos, give it a moment — or add them in batches of 20–30.
+            </span>
           </div>
         )}
         {message && <p className="small">{message}</p>}
