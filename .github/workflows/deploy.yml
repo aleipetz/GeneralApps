@@ -1,0 +1,58 @@
+name: Deploy apps to GitHub Pages
+
+# Every top-level folder with a package.json is an app. Each one is tested
+# (if it has a "test" script), built with `npm run build` into its own dist/,
+# and published at https://<user>.github.io/generalapps/<folder>/.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build all apps
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          links=""
+          for pkg in */package.json; do
+            app=$(dirname "$pkg")
+            echo "::group::$app"
+            (cd "$app" && npm ci && npm test --if-present && npm run build)
+            cp -r "$app/dist" "_site/$app"
+            links="$links<li><a href=\"$app/\">$app</a></li>"
+            echo "::endgroup::"
+          done
+          cat > _site/index.html <<HTML
+          <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>General Apps</title><style>body{font-family:system-ui,sans-serif;max-width:640px;margin:3rem auto;padding:0 1rem}li{margin:.5rem 0;font-size:1.2rem}</style></head>
+          <body><h1>General Apps</h1><ul>$links</ul></body></html>
+          HTML
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
