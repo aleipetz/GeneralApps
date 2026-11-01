@@ -55,18 +55,38 @@ function Home() {
   const [busy, setBusy] = useState('');
   const importInput = useRef<HTMLInputElement>(null);
 
-  const doExport = async () => {
+  const [backup, setBackup] = useState<File | null>(null);
+
+  // Step 1: build the backup (can take a while with many photos).
+  const prepareExport = async () => {
     setBusy('Preparing backup…');
     try {
       const blob = await exportBackup();
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `trip-bites-backup-${new Date().toISOString().slice(0, 10)}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      setBackup(new File([blob], `trip-bites-backup-${new Date().toISOString().slice(0, 10)}.json`, { type: 'application/json' }));
     } finally {
       setBusy('');
     }
+  };
+
+  // Step 2, on a fresh tap: iOS only opens the share sheet right after a tap.
+  const saveBackup = async () => {
+    if (!backup) return;
+    if (navigator.canShare?.({ files: [backup] })) {
+      try {
+        await navigator.share({ files: [backup], title: 'Trip Bites backup' });
+        setBackup(null);
+        return;
+      } catch (e) {
+        if ((e as Error).name === 'AbortError') return;
+        // Fall through to a regular download.
+      }
+    }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(backup);
+    a.download = backup.name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+    setBackup(null);
   };
 
   const doImport = async (file: File | undefined) => {
@@ -139,16 +159,25 @@ function Home() {
             🏆 Best across all trips
           </a>
         )}
-        <button className="btn ghost" onClick={doExport} disabled={!!busy || data.trips.length === 0}>
-          Export backup
-        </button>
+        {backup ? (
+          <button className="btn primary" onClick={saveBackup}>
+            💾 Save backup ({(backup.size / 1024 / 1024).toFixed(1)} MB)
+          </button>
+        ) : (
+          <button className="btn ghost" onClick={prepareExport} disabled={!!busy || data.trips.length === 0}>
+            Export backup
+          </button>
+        )}
         <button className="btn ghost" onClick={() => importInput.current?.click()} disabled={!!busy}>
           Import backup
         </button>
         <input ref={importInput} type="file" accept="application/json,.json" hidden onChange={(e) => doImport(e.target.files?.[0])} />
         {busy && <span className="muted small">{busy}</span>}
       </footer>
-      <p className="muted small">Everything is stored privately in this browser. Export a backup to move it to another device.</p>
+      <p className="muted small">
+        Everything is stored privately in this browser. On iPhone, tap Share → <strong>Add to Home Screen</strong> to use it like an app and keep
+        your data safest, and export a backup now and then.
+      </p>
     </div>
   );
 }

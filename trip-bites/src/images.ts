@@ -5,7 +5,17 @@ import type { ImageRecord } from './types.ts';
 const FULL_MAX = 1600;
 const THUMB_MAX = 400;
 
-async function decode(file: Blob): Promise<CanvasImageSource & { width: number; height: number }> {
+type Decoded = CanvasImageSource & { width: number; height: number };
+
+/** HEIC/HEIF check by MIME type, extension, or the file's "ftyp" header. */
+export async function isHeic(file: Blob): Promise<boolean> {
+  if (/image\/hei[cf]/i.test(file.type)) return true;
+  if ('name' in file && /\.(heic|heif)$/i.test((file as File).name)) return true;
+  const head = new Uint8Array(await file.slice(4, 12).arrayBuffer());
+  return /^ftyp(heic|heix|hevc|hevx|heim|heis|mif1|msf1)$/.test(String.fromCharCode(...head));
+}
+
+async function decodeNative(file: Blob): Promise<Decoded> {
   try {
     return await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
@@ -19,6 +29,22 @@ async function decode(file: Blob): Promise<CanvasImageSource & { width: number; 
     } finally {
       URL.revokeObjectURL(url);
     }
+  }
+}
+
+/**
+ * Decode any photo, including iPhone HEIC files. The browser's own decoder is
+ * tried first (iOS decodes HEIC natively); if it can't, a bundled
+ * WebAssembly HEIC decoder is loaded on demand. Everything is then stored as
+ * JPEG, so it displays everywhere.
+ */
+async function decode(file: Blob): Promise<Decoded> {
+  try {
+    return await decodeNative(file);
+  } catch (nativeError) {
+    if (!(await isHeic(file))) throw nativeError;
+    const { heicTo } = await import('heic-to');
+    return heicTo({ blob: file, type: 'bitmap' });
   }
 }
 

@@ -181,7 +181,8 @@ export function RankFlow({ categoryId, queue, onClose }: { categoryId: string; q
         <div className="flow-inner">
           <h2 className="flow-question">Which did you prefer?</h2>
           <p className="muted center">
-            {left <= 1 ? 'Last question' : `At most ${left} more questions`} · ← / → keys work too
+            {left <= 1 ? 'Last question' : `At most ${left} more questions`}
+            <span className="desktop-only"> · ← / → keys work too</span>
           </p>
           <div className="versus">
             <CompareCard item={item} label="New" onPick={() => respond('new')} />

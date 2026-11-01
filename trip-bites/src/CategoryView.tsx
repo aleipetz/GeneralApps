@@ -23,7 +23,9 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
   const itemsById = new Map(data.items.map((i) => [i.id, i]));
 
   const handleFiles = async (fileList: FileList | null) => {
-    const files = [...(fileList ?? [])].filter((f) => f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name));
+    // Don't filter by MIME type: iOS sometimes reports photos (especially HEIC)
+    // with an empty or generic type. Anything that isn't decodable is reported.
+    const files = [...(fileList ?? [])];
     if (files.length === 0) return;
     setMessage('');
     setUpload({ done: 0, total: files.length });
@@ -31,7 +33,7 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
     setUpload(null);
     setMessage(
       `Added ${added} photo${added === 1 ? '' : 's'}.` +
-        (failed.length ? ` Couldn't read ${failed.length} (${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}) — HEIC photos only work in Safari; export as JPEG elsewhere.` : ''),
+        (failed.length ? ` Couldn't read ${failed.length} file${failed.length === 1 ? '' : 's'} (${failed.slice(0, 3).join(', ')}${failed.length > 3 ? '…' : ''}).` : ''),
     );
   };
 
@@ -113,7 +115,7 @@ export function CategoryView({ tripId, categoryId }: { tripId: string; categoryI
             <button className="btn" onClick={addByName}>
               + Add without photo
             </button>
-            <span className="muted small">or drop photos anywhere on this page</span>
+            <span className="muted small desktop-only">or drop photos anywhere on this page</span>
           </div>
         )}
         {message && <p className="small">{message}</p>}
