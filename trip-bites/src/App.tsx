@@ -178,6 +178,7 @@ function Home() {
         Everything is stored privately in this browser. On iPhone, tap Share → <strong>Add to Home Screen</strong> to use it like an app and keep
         your data safest, and export a backup now and then.
       </p>
+      <p className="muted small">Version {__BUILD__}</p>
     </div>
   );
 }
