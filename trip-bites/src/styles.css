@@ -151,3 +151,6 @@ a { color: inherit; }
 @media (hover: none) {
   .desktop-only { display: none; }
 }
+@media (hover: hover) {
+  .touch-only { display: none; }
+}
