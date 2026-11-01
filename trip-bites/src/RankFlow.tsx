@@ -39,6 +39,8 @@ export function RankFlow({ categoryId, queue, onClose }: { categoryId: string; q
   const draft =
     edits && edits.id === item?.id ? edits : { id: item?.id ?? '', name: item?.name ?? '', place: item?.place ?? '', notes: item?.notes ?? '' };
   const setDraft = setEdits;
+  // While typing, the photo shrinks so the fields stay above the keyboard.
+  const [typing, setTyping] = useState(false);
 
   const commit = useCallback(
     async (bucket: Bucket, index: number) => {
@@ -126,22 +128,33 @@ export function RankFlow({ categoryId, queue, onClose }: { categoryId: string; q
     return (
       <div className="flow">
         {header}
-        <div className="flow-inner">
+        <div className={`flow-inner${typing ? ' typing' : ''}`}>
           <div className="flow-photo">
             <Thumb imageId={item.imageId} kind="full" size="100%" />
           </div>
-          <div className="stack">
+          <div
+            className="stack"
+            onFocus={() => setTyping(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setTyping(false);
+            }}
+          >
             <input
               className="input input-lg"
               placeholder="What was it? (e.g. Tonkotsu ramen)"
               value={draft.name}
-              autoFocus={!draft.name}
+              autoComplete="off"
+              enterKeyHint="done"
+              onKeyDown={blurOnEnter}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
             <input
               className="input"
               placeholder="Where? (restaurant, stall, city — optional)"
               value={draft.place}
+              autoComplete="off"
+              enterKeyHint="done"
+              onKeyDown={blurOnEnter}
               onChange={(e) => setDraft({ ...draft, place: e.target.value })}
             />
             <textarea
@@ -149,6 +162,7 @@ export function RankFlow({ categoryId, queue, onClose }: { categoryId: string; q
               rows={2}
               placeholder="Notes (optional)"
               value={draft.notes}
+              autoComplete="off"
               onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
             />
           </div>
@@ -236,4 +250,9 @@ function CompareCard({ item, label, onPick }: { item: Item; label?: string; onPi
       {item.place && <span className="muted small">{item.place}</span>}
     </button>
   );
+}
+
+/** Enter/"done" on the iPhone keyboard closes it instead of doing nothing. */
+function blurOnEnter(e: React.KeyboardEvent<HTMLInputElement>) {
+  if (e.key === 'Enter') e.currentTarget.blur();
 }
