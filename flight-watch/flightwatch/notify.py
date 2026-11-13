@@ -29,7 +29,9 @@ def _settings() -> tuple[str, str, str]:
     return user, password, to
 
 
-def send(subject: str, text: str, html: str | None = None) -> None:
+def send(subject: str, text: str, html: str | None = None,
+         attachments: list[tuple[str, bytes, str]] | None = None) -> None:
+    """attachments: lista de (nome do arquivo, conteúdo, tipo MIME 'text/csv')."""
     user, password, to = _settings()
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -38,6 +40,9 @@ def send(subject: str, text: str, html: str | None = None) -> None:
     msg.set_content(text)
     if html:
         msg.add_alternative(html, subtype="html")
+    for name, data, mime in attachments or []:
+        maintype, subtype = mime.split("/", 1)
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=name)
     with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=30) as smtp:
         smtp.login(user, password)
         smtp.send_message(msg)

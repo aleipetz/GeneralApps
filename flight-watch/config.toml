@@ -37,6 +37,12 @@ value_per_thousand_brl = 25.0
 # Pausa entre buscas no Google Flights (segundos, sorteada no intervalo).
 pause_seconds = [2.0, 5.0]
 
+[report]
+# "digest": e-mail com tudo que foi coletado em cada varredura (+ CSV anexo),
+#           marcando com ★ o que está abaixo da média.
+# "alerts": e-mail só quando há oferta abaixo da média.
+mode = "digest"
+
 [alerts]
 # Alerta quando o menor preço de uma data fica X% abaixo da média (mediana) de
 # referência. A referência é a mesma cabine, com ida no mesmo mês (± season_months),

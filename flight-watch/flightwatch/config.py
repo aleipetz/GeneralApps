@@ -26,6 +26,7 @@ class Config:
     patterns: list[DatePattern] = field(default_factory=list)
     miles_value_per_thousand_brl: float = 25.0
     pause_seconds: tuple[float, float] = (2.0, 5.0)
+    report_mode: str = "digest"
     alerts: "AlertRules" = None  # type: ignore[assignment]
 
 
@@ -51,5 +52,6 @@ def load(path: Path = DEFAULT_PATH) -> Config:
         patterns=[DatePattern(**p) for p in route["date_pattern"]],
         miles_value_per_thousand_brl=raw["miles"]["value_per_thousand_brl"],
         pause_seconds=tuple(raw.get("sweep", {}).get("pause_seconds", (2.0, 5.0))),
+        report_mode=raw.get("report", {}).get("mode", "digest"),
         alerts=AlertRules(**raw.get("alerts", {})),
     )

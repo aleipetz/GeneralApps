@@ -20,7 +20,7 @@ de nuvem, então essa coleta vai rodar num computador pessoal).
    Alerta se o preço está ≥20% abaixo da referência ou abaixo de um teto fixo
    (econômica R$ 4.500, executiva R$ 13.000). Cada oferta é confirmada com uma
    segunda busca, e a mesma data só gera alerta de novo se cair mais 5%.
-4. **E-mail** (`flightwatch/notify.py`) pelo Gmail, com os secrets
+4. **E-mail** (`flightwatch/notify.py`) pelo Gmail. Com `[report] mode = "digest"` (padrão), cada varredura manda o relatório completo: tabela de todas as datas × cabines, resumo e CSV anexo, com ★ no que está abaixo da média. Com `mode = "alerts"`, só manda quando há oferta. Usa, com os secrets
    `GMAIL_APP_PASSWORD` e `ALERT_EMAIL`. Se metade das buscas falhar, chega um
    e-mail de aviso.
 

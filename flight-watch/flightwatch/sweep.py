@@ -9,7 +9,7 @@ import traceback
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from . import config, dates, detect, email_report, google_flights, notify, store
+from . import config, dates, detect, digest, email_report, google_flights, notify, store
 
 
 def search_once(cfg, trip, cabin) -> store.Observation:
@@ -89,7 +89,15 @@ def main() -> None:
               f"{email_report.brl(d.obs.min_price)} ref={email_report.brl(d.baseline)} ({d.reason})")
 
     sent = 0
-    if fresh and not args.no_email:
+    if cfg.report_mode == "digest" and not args.no_email:
+        subj, text, html, csv_bytes = digest.build(current, deals, cfg.origin, cfg.destination, cfg.cabins)
+        try:
+            notify.send(subj, text, html, [(f"flight-watch-{date.today():%Y-%m-%d}.csv",
+                                            csv_bytes, "text/csv")])
+            print("E-mail com o relatório enviado.")
+        except notify.EmailNotConfigured as e:
+            print(f"E-mail não enviado: {e}")
+    elif fresh and not args.no_email:
         text, html = email_report.body(fresh, cfg.origin, cfg.destination)
         try:
             notify.send(email_report.subject(fresh, cfg.origin, cfg.destination), text, html)
