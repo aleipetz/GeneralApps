@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 from flightwatch import config, latam
+from flightwatch.config import DatePattern
 from flightwatch.dates import TripDates
 
 FIX = Path(__file__).parent / "fixtures"
@@ -26,8 +27,24 @@ def cfg():
     return config.load()
 
 
-def pattern(name_prefix: str):
-    return next(p for p in cfg().patterns if p.name.startswith(name_prefix))
+# Padrões fixos nos testes (independentes do config.toml atual).
+PATTERNS = {
+    "sex-noite": DatePattern("sex-noite -> sab-noite", 4, 15,
+                             outbound_min_hour=18, return_min_hour=18),
+    "sab-manha": DatePattern("sab-manha -> dom-manha", 5, 15,
+                             outbound_max_hour=12, return_max_hour=12),
+    "livre": DatePattern("sex -> dom", 4, 16),
+}
+
+
+def pattern(name: str) -> DatePattern:
+    return PATTERNS[name]
+
+
+def test_no_time_limits_keeps_everything():
+    p = pattern("livre")
+    legs = latam.parse_offers(OUT) + latam.parse_offers(IN)
+    assert all(latam.outbound_ok(l, p) and latam.return_ok(l, p) for l in legs)
 
 
 def test_parse_outbound_basic():
