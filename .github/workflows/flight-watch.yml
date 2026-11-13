@@ -50,8 +50,8 @@ jobs:
         env:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
-          # Num push de teste, varre só 4 pares de datas.
-          LIMIT: ${{ github.event_name == 'push' && '4' || inputs.limit || '0' }}
+          # Num push de teste, varre só 12 pares de datas.
+          LIMIT: ${{ github.event_name == 'push' && '12' || inputs.limit || '0' }}
         run: python -m flightwatch.sweep --data-dir data --limit "$LIMIT"
       - name: Salvar histórico
         if: always()

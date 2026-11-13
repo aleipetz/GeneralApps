@@ -58,3 +58,10 @@ def test_realert_only_on_further_drop():
     cheaper = obs(4900)
     d2 = detect.find_deals([cheaper], history() + [cheaper], RULES, NOW)
     assert detect.filter_already_alerted(d2, state, RULES) == d2
+
+
+def test_other_pattern_ignored():
+    hist = [obs(15000, outbound=f"2027-01-{10 + i:02d}") for i in range(6)]
+    for h in hist:
+        h.pattern = "sab-manha"
+    assert detect.baseline_for(obs(7000), hist, RULES, NOW) == (None, 0)
