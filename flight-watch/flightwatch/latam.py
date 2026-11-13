@@ -4,6 +4,7 @@ Não há API pública. Abrimos a busca com "usar milhas" num Chromium headless e
 guardamos as respostas JSON que o próprio site recebe, para descobrir o formato.
 """
 import json
+import os
 from pathlib import Path
 
 from .dates import TripDates
@@ -40,7 +41,8 @@ def probe(origin: str, destination: str, trip: TripDates, cabin: str, outdir: Pa
                 entry["parse_error"] = str(e)[:100]
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        # LATAM_HEADED=1 abre uma janela visível (menos chance de bloqueio anti-bot).
+        browser = pw.chromium.launch(headless=os.environ.get("LATAM_HEADED") != "1")
         page = browser.new_page(locale="pt-BR", user_agent=(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"))

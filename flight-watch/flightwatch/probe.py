@@ -1,6 +1,6 @@
 """Fase 0: testa as fontes grátis com poucas buscas e imprime um resumo.
 
-Uso: python -m flightwatch.probe [saida/]
+Uso: python -m flightwatch.probe [saida/] [--latam-only]
 """
 import json
 import sys
@@ -13,7 +13,9 @@ from . import config, dates, google_flights, latam
 
 
 def main() -> None:
-    outdir = Path(sys.argv[1] if len(sys.argv) > 1 else "probe-out")
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    latam_only = "--latam-only" in sys.argv
+    outdir = Path(args[0] if args else "probe-out")
     outdir.mkdir(parents=True, exist_ok=True)
     cfg = config.load()
     trips = dates.trip_dates(cfg, date.today())
@@ -24,7 +26,7 @@ def main() -> None:
     sample = [trips[i] for i in (2, 3, 16, 17, 46) if i < len(trips)]
     report = {"google_flights": [], "latam": []}
 
-    for t in sample:
+    for t in ([] if latam_only else sample):
         for cabin in cfg.cabins:
             t0 = time.time()
             try:
