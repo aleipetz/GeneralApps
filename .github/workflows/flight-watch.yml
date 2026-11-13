@@ -15,7 +15,7 @@ on:
         default: '0'
   push:
     branches: ['claude/**']
-    paths: ['flight-watch/flightwatch/sweep.py', '.github/workflows/flight-watch.yml']
+    paths: ['flight-watch/**', '!flight-watch/flightwatch/probe.py', '!flight-watch/flightwatch/latam.py', '.github/workflows/flight-watch.yml']
 
 permissions:
   contents: write

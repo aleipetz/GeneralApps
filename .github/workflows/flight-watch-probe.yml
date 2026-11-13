@@ -6,7 +6,7 @@ name: flight-watch probe
 on:
   push:
     branches: ['claude/**']
-    paths: ['flight-watch/**', '.github/workflows/flight-watch-probe.yml']
+    paths: ['flight-watch/flightwatch/probe.py', 'flight-watch/flightwatch/latam.py', '.github/workflows/flight-watch-probe.yml']
   workflow_dispatch:
 
 permissions:
