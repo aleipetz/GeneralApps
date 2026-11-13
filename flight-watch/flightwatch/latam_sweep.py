@@ -1,11 +1,18 @@
 """Varredura LATAM Pass: todos os pares de datas do config, nas duas cabines.
 
 Uso (de dentro de flight-watch/):
-    python -m flightwatch.latam_sweep [--part 1/2] [--limit N] [--push]
+    python -m flightwatch.latam_sweep [--batch N | --part K/N | --limit N] [--pause S] [--push]
 
-  --part K/N  faz só a fatia K de N dos pares de datas (ex.: 1/2 de manhã, 2/2 à noite)
+  --batch N   faz N pares continuando de onde a última execução parou (rodízio;
+              cursor em flight-watch/.latam-state.json). É o modo do agendamento.
+  --part K/N  faz só a fatia K de N dos pares de datas
   --limit N   só os N primeiros pares (teste rápido)
+  --pause S   pausa média entre buscas, em segundos (padrão 180)
   --push      faz commit e push do arquivo de dados na branch claude/latam-local
+
+Limite do site: em 13/11/2026, ~6 buscas seguidas com 10-40 s de intervalo já
+levaram a respostas 403 ("A busca está demorando mais que o normal"). Por isso a
+pausa padrão é longa e a varredura para sozinha após 2 falhas seguidas (código 3).
 
 Precisa do Chrome do projeto logado no LATAM Pass (python -m flightwatch.latam_browser).
 Cada par de datas = uma busca ida e volta no site (lista de ida + lista de volta,
@@ -15,7 +22,8 @@ Saída: flight-watch/data/latam/AAAA-MM-DD.jsonl, uma linha por registro:
   {"kind": "offer", ...MilesOffer, "searched_at": ...}
   {"kind": "empty", "outbound_date", "inbound_date", "cabin", "pattern", "searched_at"}
   {"kind": "error", "outbound_date", "inbound_date", "error", "searched_at"}
-Códigos de saída: 0 ok, 2 sessão do LATAM Pass expirada (refaça o login), 1 outro erro.
+Códigos de saída: 0 ok, 2 sessão do LATAM Pass expirada (refaça o login),
+3 bloqueio provável (parou cedo), 1 outro erro.
 """
 from __future__ import annotations
 
@@ -39,12 +47,36 @@ def log(msg: str) -> None:
     print(f"[{datetime.now():%H:%M:%S}] {msg}", flush=True)
 
 
+STATE = ROOT / ".latam-state.json"   # cursor do rodízio (local, fora do git)
+MAX_CONSECUTIVE_ERRORS = 2
+
+
 def select(trips: list, part: str | None, limit: int | None) -> list:
     if part:
         k, n = (int(x) for x in part.split("/"))
         size = -(-len(trips) // n)
         trips = trips[(k - 1) * size: k * size]
     return trips[:limit] if limit else trips
+
+
+def load_cursor() -> str | None:
+    try:
+        return json.loads(STATE.read_text(encoding="utf-8")).get("next_outbound")
+    except Exception:
+        return None
+
+
+def save_cursor(next_outbound: str) -> None:
+    STATE.write_text(json.dumps({"next_outbound": next_outbound,
+                                 "updated": datetime.now().isoformat(timespec="seconds")}),
+                     encoding="utf-8")
+
+
+def rotate(trips: list, n: int) -> list:
+    """Próximos `n` pares a partir do cursor salvo, dando a volta no fim da lista."""
+    cur = load_cursor()
+    start = next((i for i, t in enumerate(trips) if t.outbound.isoformat() >= cur), 0) if cur else 0
+    return (trips[start:] + trips[:start])[:n]
 
 
 def push(path: Path) -> None:
@@ -70,12 +102,18 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="latam_sweep")
     ap.add_argument("--part")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--batch", type=int,
+                    help="faz só N pares, continuando de onde a última execução parou")
     ap.add_argument("--push", action="store_true")
-    ap.add_argument("--pause", type=float, default=5.0, help="pausa média entre buscas (s)")
+    ap.add_argument("--pause", type=float, default=180.0, help="pausa média entre buscas (s)")
     a = ap.parse_args(argv)
 
     cfg = config.load()
-    trips = select(dates.trip_dates(cfg, date.today()), a.part, a.limit)
+    all_trips = dates.trip_dates(cfg, date.today())
+    if a.batch:
+        trips = rotate(all_trips, a.batch)
+    else:
+        trips = select(all_trips, a.part, a.limit)
     DATA.mkdir(parents=True, exist_ok=True)
     out_path = DATA / f"{date.today().isoformat()}.jsonl"
     log(f"{len(trips)} pares de datas -> {out_path.relative_to(ROOT)}")
@@ -83,12 +121,22 @@ def main(argv: list[str] | None = None) -> int:
     from playwright.sync_api import sync_playwright
 
     t0 = time.time()
-    n_offers = n_errors = 0
+    n_offers = n_errors = n_done = consecutive = 0
     code = 0
 
+    def advance(i: int) -> None:
+        """Marca o par i (1-based) como feito e move o cursor do rodízio."""
+        nonlocal n_done, consecutive
+        n_done += 1
+        consecutive = 0
+        if a.batch:
+            nxt = all_trips[(all_trips.index(trips[i - 1]) + 1) % len(all_trips)]
+            save_cursor(nxt.outbound.isoformat())
+
     def error(fh, trip, msg: str) -> None:
-        nonlocal n_errors
+        nonlocal n_errors, consecutive
         n_errors += 1
+        consecutive += 1
         log(f"erro {trip.outbound}->{trip.inbound}: {msg}"[:200])
         fh.write(json.dumps({"kind": "error", "outbound_date": trip.outbound.isoformat(),
                              "inbound_date": trip.inbound.isoformat(), "error": msg[:300],
@@ -100,8 +148,13 @@ def main(argv: list[str] | None = None) -> int:
         page = latam_browser.connect(pw)
         try:
             for i, trip in enumerate(trips, 1):
+                if consecutive >= MAX_CONSECUTIVE_ERRORS:
+                    log(f"BLOQUEIO PROVÁVEL: {consecutive} falhas seguidas; parando para não "
+                        "piorar. A próxima execução continua deste par.")
+                    code = 3
+                    break
                 if i > 1:
-                    time.sleep(a.pause + random.uniform(-0.4, 0.8) * a.pause)
+                    time.sleep(a.pause + random.uniform(-0.3, 0.5) * a.pause)
                 try:
                     out_body, in_body = latam.fetch_roundtrip(page, cfg.origin,
                                                               cfg.destination, trip)
@@ -132,13 +185,14 @@ def main(argv: list[str] | None = None) -> int:
                     summary.append(f"{cabin}={offers[0].miles:,} mi + R${offers[0].taxes_brl:.0f}"
                                    if offers else f"{cabin}=-")
                 fh.flush()
+                advance(i)
                 log(f"{i}/{len(trips)} {trip.outbound}->{trip.inbound} " + " ".join(summary))
         except latam.LoginRequired:
             log("SESSÃO EXPIRADA: rode `python -m flightwatch.latam_browser` e faça login no LATAM Pass")
             code = 2
 
     mins = (time.time() - t0) / 60
-    log(f"fim: {len(trips)} pares, {n_offers} ofertas, {n_errors} erros, {mins:.1f} min")
+    log(f"fim: {n_done}/{len(trips)} pares, {n_offers} ofertas, {n_errors} erros, {mins:.1f} min")
     if a.push and n_offers:
         try:
             push(out_path)

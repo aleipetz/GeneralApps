@@ -230,7 +230,11 @@ def combine(out_legs: list[Leg], in_legs: list[Leg], trip: TripDates, cabin: str
                 equivalent_brl=round(miles / 1000 * v + taxes, 2),
                 seats=min(seats) if seats else None, link=link,
             ))
-    return sorted(offers, key=lambda x: x.equivalent_brl)[:top]
+    unique: dict[tuple, MilesOffer] = {}
+    for x in sorted(offers, key=lambda x: x.equivalent_brl):
+        key = (x.outbound_departure, x.inbound_departure, x.miles, x.taxes_brl, x.stops)
+        unique.setdefault(key, x)   # mesmas datas/horários/preço = mesma oferta para o alerta
+    return list(unique.values())[:top]
 
 
 # ---------------------------------------------------------------- busca no navegador

@@ -38,9 +38,20 @@ Não precisa do Chromium do Playwright: usa o Chrome instalado.
 
 ## Agendamento (Windows)
 
-`run_latam_sweep.cmd 1/2` e `run_latam_sweep.cmd 2/2` rodam cada metade e fazem push.
-Duas tarefas no Agendador, uma de manhã e outra à noite, cobrem todas as datas uma vez por dia.
-O log fica em `flight-watch\logs\`.
+O site limita a frequência: em 13/11/2026, umas 6 buscas seguidas, com 10 a 40 s de
+intervalo, bastaram para receber 403 ("A busca está demorando mais que o normal") em todas
+as seguintes. Por isso:
+
+- `run_latam_sweep.cmd [N]` faz só N pares (padrão 10) com ~3 min entre buscas,
+  continuando de onde a execução anterior parou (cursor em `.latam-state.json`), e faz push.
+- Após 2 falhas seguidas a varredura para (código 3) e a próxima recomeça do mesmo par.
+- 4 tarefas por dia (07:00, 12:00, 17:00, 22:00) × 10 pares = 40 pares/dia, ou seja,
+  todas as ~87 datas a cada ~2 dias. Cada execução leva ~35 min.
+
+Tarefas: `flight-watch LATAM 07h`, `12h`, `17h`, `22h` (Agendador de Tarefas → Biblioteca).
+Para conferir: `schtasks /Query /TN "flight-watch LATAM 07h" /V /FO LIST` (campo
+"Último resultado": 0 = ok, 2 = refazer login, 3 = bloqueio) e os logs em `flight-watch\logs\`.
+O computador precisa estar ligado e com seu usuário logado no horário.
 
 ## Quando a sessão expira
 
