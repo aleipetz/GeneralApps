@@ -1,0 +1,63 @@
+name: flight-watch
+
+# Varre os preços GRU⇄BER no Google Flights, guarda o histórico na branch
+# flight-watch-data e envia e-mail quando há preço abaixo da média.
+# Agendamentos (schedule) só rodam a partir da branch padrão (main).
+
+on:
+  schedule:
+    - cron: '17 10 * * *'   # 07:17 em Brasília
+    - cron: '17 22 * * *'   # 19:17 em Brasília
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Só os N primeiros pares de datas (0 = todos)'
+        default: '0'
+  push:
+    branches: ['claude/**']
+    paths: ['flight-watch/**', '!flight-watch/flightwatch/probe.py', '!flight-watch/flightwatch/latam.py', '.github/workflows/flight-watch.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: flight-watch
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r flight-watch/requirements.txt pytest
+      - run: python -m pytest -q tests
+        working-directory: flight-watch
+      - name: Abrir branch de dados
+        run: |
+          git config --global user.name "flight-watch[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          if git fetch --depth 1 origin flight-watch-data:flight-watch-data; then
+            git worktree add flight-watch/data flight-watch-data
+          else
+            git worktree add --orphan -b flight-watch-data flight-watch/data
+          fi
+      - name: Varredura
+        working-directory: flight-watch
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+          # Num push de teste, varre só 4 pares de datas.
+          LIMIT: ${{ github.event_name == 'push' && '4' || inputs.limit || '0' }}
+        run: python -m flightwatch.sweep --data-dir data --limit "$LIMIT"
+      - name: Salvar histórico
+        if: always()
+        working-directory: flight-watch/data
+        run: |
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -qm "dados: varredura $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push origin flight-watch-data

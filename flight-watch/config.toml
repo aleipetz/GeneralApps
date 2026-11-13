@@ -1,0 +1,60 @@
+# Rota e regras de busca. Tudo aqui é editável sem mexer no código.
+
+[route]
+origin = "GRU"
+destination = "BER"
+cabins = ["economy", "business"]
+
+# Janela de busca: de hoje + min_days_ahead até hoje + max_days_ahead.
+min_days_ahead = 14
+max_days_ahead = 330
+
+# Viagens de 15 dias.
+# Ida: sexta a partir das 18h  -> volta no sábado (15 dias depois) a partir das 18h
+#      sábado até 12h          -> volta no domingo (15 dias depois) até 12h
+[[route.date_pattern]]
+name = "sex-noite -> sab-noite"
+outbound_weekday = 4        # 0=segunda ... 4=sexta
+outbound_min_hour = 18
+trip_days = 15
+return_min_hour = 18
+
+[[route.date_pattern]]
+name = "sab-manha -> dom-manha"
+outbound_weekday = 5        # sábado
+outbound_max_hour = 12
+trip_days = 15
+return_max_hour = 12
+
+[miles]
+program = "LATAM Pass"
+# R$ por 1.000 milhas. Referência de mercado em 2026: preço-alvo de compra
+# ~R$ 25–26/milheiro (promoções de 62–65% OFF). Usado para converter
+# resgates em reais e comparar com a tarifa em dinheiro.
+value_per_thousand_brl = 25.0
+
+[sweep]
+# Pausa entre buscas no Google Flights (segundos, sorteada no intervalo).
+pause_seconds = [2.0, 5.0]
+
+[report]
+# "digest": e-mail com tudo que foi coletado em cada varredura (+ CSV anexo),
+#           marcando com ★ o que está abaixo da média.
+# "alerts": e-mail só quando há oferta abaixo da média.
+mode = "digest"
+
+[alerts]
+# Alerta quando o menor preço de uma data fica X% abaixo da média (mediana) de
+# referência. A referência é a mesma cabine, com ida no mesmo mês (± season_months),
+# observada nos últimos baseline_days dias.
+pct_below_baseline = 0.20
+baseline_days = 30
+season_months = 1
+min_baseline_samples = 8
+# Depois de alertar uma data, só alerta de novo se o preço cair mais X%.
+realert_drop = 0.05
+
+# Preço que sempre merece alerta, mesmo sem histórico (R$, ida e volta).
+[alerts.absolute_max_brl]
+economy = 4500
+business = 13000

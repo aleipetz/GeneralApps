@@ -1,0 +1,35 @@
+name: flight-watch probe
+
+# Fase 0: testa as fontes grátis (Google Flights e site da LATAM) a partir
+# dos servidores do GitHub, que é onde o monitor vai rodar.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['flight-watch/flightwatch/probe.py', 'flight-watch/flightwatch/latam.py', '.github/workflows/flight-watch-probe.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: flight-watch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt pytest
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest -q tests
+      - run: python -m flightwatch.probe probe-out
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: probe-out
+          path: flight-watch/probe-out
