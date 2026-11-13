@@ -18,13 +18,20 @@ def _d(iso: str) -> str:
     return f"{WEEKDAY_PT[d.weekday()]} {d:%d/%m}"
 
 
+def hm(minutes: int | None) -> str:
+    return "" if not minutes else f"{minutes // 60}h{minutes % 60:02d}"
+
+
 def _flight(o: Observation) -> str:
     if not o.offers:
         return ""
     t = o.offers[0]
     stops = t.get("stops")
-    esc = "direto" if stops == 0 else f"{stops} esc."
-    return f"{', '.join(t.get('airlines', []))} · {esc} · sai {(t.get('outbound_departure') or '')[-5:]}"
+    via = t.get("connections") or []
+    esc = "direto" if stops == 0 else f"{stops} esc." + (f" ({', '.join(via)})" if via else "")
+    dur = hm(t.get("total_duration_min"))
+    return (f"{', '.join(t.get('airlines', []))} · {esc} · sai {(t.get('outbound_departure') or '')[-5:]}"
+            + (f" · {dur} total" if dur else ""))
 
 
 def build(obs: list[Observation], deals: list[Deal], origin: str, dest: str,
@@ -112,8 +119,8 @@ def build(obs: list[Observation], deals: list[Deal], origin: str, dest: str,
         f"<tr><th>Ida → Volta</th>{head}</tr>" + "".join(rows) + "</table>"
         "<p style='color:#666;font-size:12px'>★ compara com a mediana da mesma cabine e do mesmo "
         "formato de viagem (sex-noite ou sáb-manhã). Fundo verde = mais barato do mês na cabine. Clique no preço "
-        "para abrir a busca no Google Flights. Preços no momento da coleta; o voo mostrado é o de ida "
-        "(a volta respeita a janela de horário). Detalhes das 3 melhores opções por data no CSV anexo.</p></div>")
+        "para abrir a busca no Google Flights. Preços de ida e volta no momento da coleta; o voo "
+        "mostrado e a duração total (com conexões) são da ida. Detalhes das 3 melhores opções por data no CSV anexo.</p></div>")
     text = (f"Varredura {origin}⇄{dest} · coletado {collected}\n"
             f"{len(obs)} buscas: {len(obs) - failed - empty} com preço, {empty} sem voos, {failed} com erro\n\n"
             + "\n".join(summary_txt) + "\n" + "\n".join(txt_rows) + "\n")
@@ -127,17 +134,20 @@ def to_csv(obs: list[Observation], deal_keys: dict) -> bytes:
     buf = io.StringIO()
     w = csv.writer(buf, delimiter=";")
     w.writerow(["coletado_em", "cabine", "ida", "volta", "padrao", "opcao", "preco_brl",
-                "companhias", "escalas", "saida_ida", "chegada_ida", "duracao_ida_min",
+                "companhias", "escalas", "conexoes", "saida_ida", "chegada_ida",
+                "duracao_total_ida", "tempo_voando_ida",
                 "abaixo_da_media", "erro", "link"])
     for o in sorted(obs, key=lambda o: (o.outbound, o.cabin)):
         star = "sim" if o.key in deal_keys else ""
         if not o.offers:
             w.writerow([o.ts, CABIN_PT[o.cabin], o.outbound, o.inbound, o.pattern, "", "", "", "",
-                        "", "", "", star, o.error or "sem voos", o.url])
+                        "", "", "", "", "", star, o.error or "sem voos", o.url])
         for i, of in enumerate(o.offers, 1):
             w.writerow([o.ts, CABIN_PT[o.cabin], o.outbound, o.inbound, o.pattern, i,
                         of.get("price_brl"), ", ".join(of.get("airlines", [])), of.get("stops"),
+                        ", ".join(of.get("connections") or []),
                         of.get("outbound_departure"), of.get("outbound_arrival"),
-                        of.get("duration_min"), star if i == 1 else "", o.error or "", o.url])
+                        hm(of.get("total_duration_min")), hm(of.get("duration_min")),
+                        star if i == 1 else "", o.error or "", o.url])
     # BOM para o Excel reconhecer acentos
     return ("﻿" + buf.getvalue()).encode("utf-8")

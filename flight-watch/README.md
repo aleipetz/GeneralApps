@@ -9,10 +9,11 @@ de nuvem, então essa coleta vai rodar num computador pessoal).
 
 1. **Varredura** (`flightwatch/sweep.py`), 2x por dia no GitHub Actions
    (`.github/workflows/flight-watch.yml`): para cada par de datas do
-   `config.toml` (viagens de 15 dias, sex-noite→sáb-noite e sáb-manhã→dom-manhã,
-   de 2 semanas a ~11 meses à frente) e cada cabine (econômica e executiva),
-   busca o menor preço de ida e volta no Google Flights respeitando as janelas
-   de horário. São 174 buscas, que levam ~15 min.
+   `config.toml` (ida na sexta e volta no domingo 16 dias depois, qualquer
+   horário, com idas nos próximos ~6 meses) e cada cabine (econômica e
+   executiva), busca o menor preço de ida e volta no Google Flights. São ~52
+   buscas, que levam ~5 min. O relatório traz companhias, conexões, horário de
+   saída e duração total da ida (voo + conexões).
 2. **Histórico**: cada busca vira uma linha em `data/cash/AAAA-MM.jsonl`, guardada
    na branch `flight-watch-data` (separada do código).
 3. **Detecção** (`flightwatch/detect.py`): referência = mediana dos menores preços
