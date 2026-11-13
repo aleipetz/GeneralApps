@@ -30,7 +30,7 @@ def search_once(cfg, trip, cabin) -> store.Observation:
             time.sleep(random.uniform(6, 12))
     keep = [{k: v for k, v in o.to_dict().items() if k in (
         "price_brl", "airlines", "stops", "outbound_departure", "outbound_arrival",
-        "duration_min")} for o in offers[:3]]
+        "duration_min", "total_duration_min", "connections")} for o in offers[:3]]
     return store.Observation(
         ts=store.now_iso(), source="google_flights", cabin=cabin,
         outbound=trip.outbound.isoformat(), inbound=trip.inbound.isoformat(),

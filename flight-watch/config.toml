@@ -5,26 +5,17 @@ origin = "GRU"
 destination = "BER"
 cabins = ["economy", "business"]
 
-# Janela de busca: de hoje + min_days_ahead até hoje + max_days_ahead.
-min_days_ahead = 14
-max_days_ahead = 330
+# Janela das datas de ida: de hoje + min_days_ahead até hoje + max_days_ahead (~6 meses).
+min_days_ahead = 0
+max_days_ahead = 183
 
-# Viagens de 15 dias.
-# Ida: sexta a partir das 18h  -> volta no sábado (15 dias depois) a partir das 18h
-#      sábado até 12h          -> volta no domingo (15 dias depois) até 12h
+# Ida na sexta (qualquer horário) e volta no domingo 16 dias depois (qualquer horário).
+# Para restringir horários, use outbound_min_hour / outbound_max_hour /
+# return_min_hour / return_max_hour (0–23).
 [[route.date_pattern]]
-name = "sex-noite -> sab-noite"
+name = "sex -> dom"
 outbound_weekday = 4        # 0=segunda ... 4=sexta
-outbound_min_hour = 18
-trip_days = 15
-return_min_hour = 18
-
-[[route.date_pattern]]
-name = "sab-manha -> dom-manha"
-outbound_weekday = 5        # sábado
-outbound_max_hour = 12
-trip_days = 15
-return_max_hour = 12
+trip_days = 16
 
 [miles]
 program = "LATAM Pass"

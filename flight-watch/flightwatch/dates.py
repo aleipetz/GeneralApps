@@ -18,7 +18,7 @@ def trip_dates(cfg: Config, today: date) -> list[TripDates]:
     out: list[TripDates] = []
     for p in cfg.patterns:
         d = start + timedelta(days=(p.outbound_weekday - start.weekday()) % 7)
-        while d + timedelta(days=p.trip_days) <= end:
+        while d <= end:  # a janela limita a data de ida
             out.append(TripDates(d, d + timedelta(days=p.trip_days), p))
             d += timedelta(days=7)
     return sorted(out, key=lambda t: t.outbound)
