@@ -13,17 +13,21 @@ from . import config, dates, detect, digest, email_report, google_flights, notif
 
 
 def search_once(cfg, trip, cabin) -> store.Observation:
+    """Busca com novas tentativas: o Google às vezes devolve a página sem
+    resultados para uma data que tem voos, então resultado vazio também é
+    repetido (até 3 tentativas no total)."""
     url = google_flights.build_query(cfg.origin, cfg.destination, trip, cabin).url()
-    error, offers = None, []
-    for attempt in range(2):
+    error, offers, attempts = None, [], 0
+    for attempts in range(1, 4):
         try:
             offers = google_flights.search(cfg.origin, cfg.destination, trip, cabin)
             error = None
-            break
         except Exception as e:
             error = f"{type(e).__name__}: {e}"[:200]
-            if attempt == 0:
-                time.sleep(10)
+        if offers:
+            break
+        if attempts < 3:
+            time.sleep(random.uniform(6, 12))
     keep = [{k: v for k, v in o.to_dict().items() if k in (
         "price_brl", "airlines", "stops", "outbound_departure", "outbound_arrival",
         "duration_min")} for o in offers[:3]]
@@ -31,7 +35,7 @@ def search_once(cfg, trip, cabin) -> store.Observation:
         ts=store.now_iso(), source="google_flights", cabin=cabin,
         outbound=trip.outbound.isoformat(), inbound=trip.inbound.isoformat(),
         pattern=trip.pattern.name, min_price=offers[0].price_brl if offers else None,
-        offers=keep, url=url, error=error)
+        offers=keep, url=url, error=error, attempts=attempts)
 
 
 def confirm(cfg, trips, deals: list[detect.Deal]) -> list[detect.Deal]:
@@ -74,16 +78,19 @@ def main() -> None:
 
     failed = sum(1 for o in current if o.error)
     empty = sum(1 for o in current if o.min_price is None and not o.error)
-    print(f"Concluído: {len(current) - failed - empty} com preço, {empty} sem voos, {failed} com erro")
+    retried = sum(1 for o in current if o.attempts > 1 and o.min_price is not None)
+    print(f"Concluído: {len(current) - failed - empty} com preço ({retried} só após nova tentativa), "
+          f"{empty} sem voos, {failed} com erro")
 
     history = store.load(args.data_dir, since_days=cfg.alerts.baseline_days + 5)
     store.append(args.data_dir, current)
     state = store.load_state(args.data_dir)
 
     deals = detect.find_deals(current, history + current, cfg.alerts)
+    print(f"Ofertas abaixo da média: {len(deals)}; confirmando com nova busca")
+    deals = confirm(cfg, trips, deals)
     fresh = detect.filter_already_alerted(deals, state, cfg.alerts)
-    print(f"Ofertas abaixo da média: {len(deals)} ({len(fresh)} novas)")
-    fresh = confirm(cfg, trips, fresh)
+    print(f"Confirmadas: {len(deals)} ({len(fresh)} ainda não avisadas)")
     for d in fresh:
         print(f"  {d.obs.cabin} {d.obs.outbound}->{d.obs.inbound} "
               f"{email_report.brl(d.obs.min_price)} ref={email_report.brl(d.baseline)} ({d.reason})")

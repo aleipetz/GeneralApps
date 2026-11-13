@@ -18,7 +18,8 @@ class Deal:
 
 def baseline_for(obs: Observation, history: list[Observation], rules: AlertRules,
                  now: datetime | None = None) -> tuple[float | None, int]:
-    """Mediana dos menores preços da mesma cabine, ida em mês próximo, coletados
+    """Mediana dos menores preços da mesma cabine e do mesmo formato de viagem
+    (sex-noite ou sáb-manhã), ida em mês próximo, coletados
     nos últimos `baseline_days`. Usa o último preço de cada par de datas por dia,
     para que datas muito buscadas não pesem mais."""
     now = now or datetime.now(timezone.utc)
@@ -26,6 +27,7 @@ def baseline_for(obs: Observation, history: list[Observation], rules: AlertRules
     latest: dict[tuple[str, str], int] = {}
     for h in history:
         if (h.min_price is None or h.cabin != obs.cabin or h.source != obs.source
+                or h.pattern != obs.pattern
                 or h.collected < cutoff
                 or months_apart(h.outbound, obs.outbound) > rules.season_months):
             continue

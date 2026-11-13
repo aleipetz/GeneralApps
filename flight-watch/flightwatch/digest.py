@@ -110,7 +110,8 @@ def build(obs: list[Observation], deals: list[Deal], origin: str, dest: str,
         + "".join(summary_rows) + "</table>" + star_note +
         "<table border=1 cellpadding=6 cellspacing=0 style='border-collapse:collapse'>"
         f"<tr><th>Ida → Volta</th>{head}</tr>" + "".join(rows) + "</table>"
-        "<p style='color:#666;font-size:12px'>Fundo verde = mais barato do mês na cabine. Clique no preço "
+        "<p style='color:#666;font-size:12px'>★ compara com a mediana da mesma cabine e do mesmo "
+        "formato de viagem (sex-noite ou sáb-manhã). Fundo verde = mais barato do mês na cabine. Clique no preço "
         "para abrir a busca no Google Flights. Preços no momento da coleta; o voo mostrado é o de ida "
         "(a volta respeita a janela de horário). Detalhes das 3 melhores opções por data no CSV anexo.</p></div>")
     text = (f"Varredura {origin}⇄{dest} · coletado {collected}\n"

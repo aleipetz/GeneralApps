@@ -20,6 +20,7 @@ class Observation:
     offers: list[dict]
     url: str
     error: str | None = None
+    attempts: int = 1
 
     @property
     def key(self) -> str:

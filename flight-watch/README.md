@@ -16,7 +16,7 @@ de nuvem, então essa coleta vai rodar num computador pessoal).
 2. **Histórico**: cada busca vira uma linha em `data/cash/AAAA-MM.jsonl`, guardada
    na branch `flight-watch-data` (separada do código).
 3. **Detecção** (`flightwatch/detect.py`): referência = mediana dos menores preços
-   da mesma cabine, com ida no mesmo mês ±1, coletados nos últimos 30 dias.
+   da mesma cabine e do mesmo formato de viagem, com ida no mesmo mês ±1, coletados nos últimos 30 dias.
    Alerta se o preço está ≥20% abaixo da referência ou abaixo de um teto fixo
    (econômica R$ 4.500, executiva R$ 13.000). Cada oferta é confirmada com uma
    segunda busca, e a mesma data só gera alerta de novo se cair mais 5%.
