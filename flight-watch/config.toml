@@ -32,3 +32,23 @@ program = "LATAM Pass"
 # ~R$ 25–26/milheiro (promoções de 62–65% OFF). Usado para converter
 # resgates em reais e comparar com a tarifa em dinheiro.
 value_per_thousand_brl = 25.0
+
+[sweep]
+# Pausa entre buscas no Google Flights (segundos, sorteada no intervalo).
+pause_seconds = [2.0, 5.0]
+
+[alerts]
+# Alerta quando o menor preço de uma data fica X% abaixo da média (mediana) de
+# referência. A referência é a mesma cabine, com ida no mesmo mês (± season_months),
+# observada nos últimos baseline_days dias.
+pct_below_baseline = 0.20
+baseline_days = 30
+season_months = 1
+min_baseline_samples = 8
+# Depois de alertar uma data, só alerta de novo se o preço cair mais X%.
+realert_drop = 0.05
+
+# Preço que sempre merece alerta, mesmo sem histórico (R$, ida e volta).
+[alerts.absolute_max_brl]
+economy = 4500
+business = 13000

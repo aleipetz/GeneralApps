@@ -25,6 +25,18 @@ class Config:
     max_days_ahead: int
     patterns: list[DatePattern] = field(default_factory=list)
     miles_value_per_thousand_brl: float = 25.0
+    pause_seconds: tuple[float, float] = (2.0, 5.0)
+    alerts: "AlertRules" = None  # type: ignore[assignment]
+
+
+@dataclass(frozen=True)
+class AlertRules:
+    pct_below_baseline: float = 0.20
+    baseline_days: int = 30
+    season_months: int = 1
+    min_baseline_samples: int = 8
+    realert_drop: float = 0.05
+    absolute_max_brl: dict[str, int] = field(default_factory=dict)
 
 
 def load(path: Path = DEFAULT_PATH) -> Config:
@@ -38,4 +50,6 @@ def load(path: Path = DEFAULT_PATH) -> Config:
         max_days_ahead=route["max_days_ahead"],
         patterns=[DatePattern(**p) for p in route["date_pattern"]],
         miles_value_per_thousand_brl=raw["miles"]["value_per_thousand_brl"],
+        pause_seconds=tuple(raw.get("sweep", {}).get("pause_seconds", (2.0, 5.0))),
+        alerts=AlertRules(**raw.get("alerts", {})),
     )
