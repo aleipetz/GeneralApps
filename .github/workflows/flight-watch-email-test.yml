@@ -1,0 +1,30 @@
+name: flight-watch email test
+
+# Envia um e-mail de teste usando os secrets GMAIL_APP_PASSWORD e ALERT_EMAIL.
+# Sem os secrets, só avisa e termina sem erro.
+
+on:
+  push:
+    branches: ['claude/**']
+    paths: ['flight-watch/flightwatch/notify.py', '.github/workflows/flight-watch-email-test.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  email:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: flight-watch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m flightwatch.notify
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
