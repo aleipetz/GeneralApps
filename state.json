@@ -1,9 +1,9 @@
 {
  "last_run": {
-  "ts": "2026-11-25T05:04:51+00:00",
+  "ts": "2026-11-25T20:05:49+00:00",
   "searches": 52,
-  "failed": 1,
-  "empty": 15,
+  "failed": 0,
+  "empty": 4,
   "deals": 0,
   "alerted": 0
  }
